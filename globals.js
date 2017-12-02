@@ -4,7 +4,7 @@ window.globals = {
 
 	assets: {
 		graphs: {
-
+			blockMan: 'assets/block-man.png'
 		}
 	},
 
@@ -18,6 +18,8 @@ window.globals = {
 
 	controls: {
 		left: 'LEFT',
+		right: 'RIGHT',
+		jump: 'UP',
 	},
 };
 

@@ -4,8 +4,8 @@ window.states.gameState = (function() {
 	function gameState() {};
 
 	gameState.prototype.preload = function() {
-		game.stage.backgroundColor = '#ddd';
-		Object.entries(globals.assets.graphs).forEach(function(src, name) {
+		game.stage.backgroundColor = '#fff';
+		Object.entries(globals.assets.graphs).forEach(function([name, src]) {
 			game.load.image(name, src);
 		});
 	};
@@ -24,7 +24,7 @@ window.states.gameState = (function() {
 		left: null
 	};
 	gameState.prototype.update = function() {
-		Object.entries(window.state.processRegistry).forEach(function(processes, key) {
+		Object.entries(window.state.processRegistry).forEach(function([key, processes]) {
 			processes.forEach(function(process) {
 				if (process) {
 					process.go();
@@ -32,17 +32,19 @@ window.states.gameState = (function() {
 			});
 		});
 		viewport.left = game.world.camera.x;
-		viewport.right = game.world.camera.x + globals.screenWidth;
+		viewport.right = game.world.camera.x + window.state.stageWidth;
 		viewport.top = game.world.camera.y;
-		viewport.bottom = game.world.camera.y + globals.screenHeight;
+		viewport.bottom = game.world.camera.y + window.state.screenHeight;
 	};
+
+	var yAxis = p2.vec2.fromValues(0, 1);
 
 	gameState.prototype.render = function() {
 
 	};
 
 	var initControls = function() {
-		Object.entries(globals.controls).forEach(function(key, action) {
+		Object.entries(globals.controls).forEach(function([action, key]) {
 			window.state.controls[action] = game.input.keyboard.addKey(Phaser.Keyboard[key]);
 		});
 	};
@@ -52,12 +54,65 @@ window.states.gameState = (function() {
 	};
 
 	var initPhysics = function() {
-		window.game.physics.startSystem(Phaser.Physics.P2JS);
+		game.physics.startSystem(Phaser.Physics.P2JS);
+		game.physics.p2.gravity.y = 1000;
 	};
 
 	var populate = function() {
-
+		util.factory(Man, []);
 	};
+
+	var Man = (function() {
+		util.extend(Man, util.prototypes.Process);
+
+		function Man() {
+			this.inputs = {};
+
+			this.x = 200;
+			this.y = 200;
+			this.sprite = game.add.sprite(this.x, this.y, 'blockMan');
+			this.sprite.anchor.set(0.5, 0.5);
+			game.physics.p2.enable(this.sprite, false);
+//			this.sprite.body.setCircle(21);
+		}
+
+		Man.prototype.go = function() {
+			this.inputs.left = state.controls.left.isDown;
+			this.inputs.right = state.controls.right.isDown;
+			this.inputs.jump = state.controls.jump.isDown;
+
+			if (this.inputs.left) {
+				this.sprite.body.moveLeft(250);
+			}
+			if (this.inputs.right) {
+				this.sprite.body.moveRight(250);
+			}
+			if (this.inputs.jump && this.canJump()) {
+				this.sprite.body.moveUp(600);
+			}
+		};
+
+		Man.prototype.canJump = function() {
+			var result = false;
+			game.physics.p2.world.narrowphase.contactEquations.forEach((equation) => {
+				if ([equation.bodyA, equation.bodyB].includes(this.sprite.body.data)) {
+					var what = p2.vec2.dot(equation.normalA, yAxis);
+
+					if (equation.bodyA === this.sprite.body.data) {
+						what *= -1;
+					}
+
+					if (what > 0.5) {
+						result = true;
+					}
+				}
+
+			});
+			return result;
+		};
+
+		return Man;
+	}());
 
 	return gameState;
 
