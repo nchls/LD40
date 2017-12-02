@@ -56,10 +56,15 @@ window.states.gameState = (function() {
 	var initPhysics = function() {
 		game.physics.startSystem(Phaser.Physics.P2JS);
 		game.physics.p2.gravity.y = 1000;
+		game.physics.p2.friction = 2;
 	};
 
 	var populate = function() {
 		util.factory(Man, []);
+		util.factory(Hand, []);
+		for (var i=0; i<30; i++) {
+			util.factory(Crate, [util.rand(0, window.state.stageWidth / 5), util.rand(0, window.state.stageHeight)]);
+		}
 	};
 
 	var Man = (function() {
@@ -73,7 +78,6 @@ window.states.gameState = (function() {
 			this.sprite = game.add.sprite(this.x, this.y, 'blockMan');
 			this.sprite.anchor.set(0.5, 0.5);
 			game.physics.p2.enable(this.sprite, false);
-//			this.sprite.body.setCircle(21);
 		}
 
 		Man.prototype.go = function() {
@@ -112,6 +116,84 @@ window.states.gameState = (function() {
 		};
 
 		return Man;
+	}());
+
+	var handBody;
+	var handConstraint;
+	var Hand = (function() {
+		util.extend(Hand, util.prototypes.Process);
+
+		function Hand() {
+			this.inputs = {};
+
+			this.x = window.state.stageWidth / 2;
+			this.y = window.state.stageHeight / 2;
+			this.sprite = game.add.sprite(this.x, this.y, 'hand');
+
+			handBody = new p2.Body();
+			game.physics.p2.world.addBody(handBody);
+
+			game.input.onDown.add(this.handleClick, game.input.activePointer);
+			game.input.onUp.add(this.handleClickEnd);
+			game.input.addMoveCallback(this.handleMouseMove, game.input.activePointer);
+		}
+
+		Hand.prototype.go = function() {
+
+		};
+
+		Hand.prototype.handleClick = function(pointer) {
+			var crateSprites = window.state.processRegistry[Crate.toString()].map((crate) => {
+				return crate.sprite;
+			});
+			var clickedBodies = game.physics.p2.hitTest(pointer.position, crateSprites);
+			console.log(clickedBodies);
+			clickedBodies.forEach((clickedBody) => {
+				var p2pos = [game.physics.p2.pxmi(pointer.position.x), game.physics.p2.pxmi(pointer.position.y)];
+				var localPointInBody = [0, 0];
+				clickedBody.toLocalFrame(localPointInBody, p2pos);
+				handConstraint = game.physics.p2.createRevoluteConstraint(handBody, [0, 0], clickedBody, [
+					game.physics.p2.mpxi(localPointInBody[0]), 
+					game.physics.p2.mpxi(localPointInBody[1]) 
+				]);
+			});
+		};
+
+		Hand.prototype.handleClickEnd = function() {
+			game.physics.p2.removeConstraint(handConstraint);
+		};
+
+		Hand.prototype.handleMouseMove = function(pointer) {
+			handBody.position[0] = game.physics.p2.pxmi(pointer.position.x);
+			handBody.position[1] = game.physics.p2.pxmi(pointer.position.y);
+		};
+
+		return Hand;
+	}());
+
+	var Crate = (function() {
+		util.extend(Crate, util.prototypes.Process);
+
+		function Crate(x, y) {
+			this.inputs = {};
+
+			this.x = x;
+			this.y = y;
+			this.sprite = game.add.sprite(this.x, this.y, 'crate');
+			this.sprite.anchor.set(0.5, 0.5);
+			game.physics.p2.enable(this.sprite, false);
+//			this.sprite.body.angularDamping = 3;
+		}
+
+		Crate.prototype.go = function() {
+
+		};
+
+		Crate.prototype.canJump = function() {
+
+		};
+
+		return Crate;
 	}());
 
 	return gameState;
